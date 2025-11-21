@@ -1,0 +1,79 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+dist
+dist-ssr
+*.local
+build
+.output
+.vercel
+.netlify
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Testing
+coverage
+*.lcov
+.nyc_output
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*~
+
+# OS files
+Thumbs.db
+Desktop.ini
+
+# Cache
+.cache
+.parcel-cache
+.eslintcache
+.stylelintcache
+.turbo
+
+# Temporary files
+*.tmp
+*.temp
+.temp
+.tmp
+
+# Claude Code
+.claude/formula/workflow/*.log
+.claude/formula/workflow/*.json
+.claude/formula/archive/
+
+# Optional: Uncomment if you want to ignore all Claude configs
+# .claude/
+
+# Formula-Contract work files
+.claude/
+FORMULA.md
+
+# Reference projects (for development reference only)
+_reference/

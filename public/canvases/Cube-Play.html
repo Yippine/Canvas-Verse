@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 魔術方塊 MVP</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #222; font-family: 'Arial', sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; }
+
+        /* UI 覆蓋層 */
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            pointer-events: none; /* 讓滑鼠可以穿透點擊到 canvas */
+            user-select: none;
+        }
+
+        h1 { margin: 0 0 10px 0; font-size: 1.2rem; color: #ffd700; }
+        p { margin: 5px 0; font-size: 0.9rem; opacity: 0.9; }
+        .key { display: inline-block; background: #444; padding: 2px 6px; border-radius: 4px; font-family: monospace; border: 1px solid #666; }
+
+        /* 控制面板 */
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 8px;
+            pointer-events: auto;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 90vw;
+        }
+
+        button {
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        button:hover { background: #555; }
+        button:active { background: #777; }
+        button.action-btn { background: #2c3e50; border-color: #34495e; font-weight: bold; }
+        button.action-btn:hover { background: #34495e; }
+
+        /* 載入提示 */
+        #loading {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 1.5rem;
+            display: none;
+        }
+    </style>
+    <!-- 引入 Three.js 和 依賴 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+    <div id="loading">載入中...</div>
+
+    <div id="ui-container">
+        <h1>3D 魔術方塊模擬器 (MVP)</h1>
+        <p>視角控制：滑鼠左鍵拖曳旋轉，滾輪縮放</p>
+        <p>鍵盤操作 (區分大小寫)：</p>
+        <p><span class="key">R</span> 右層順時針 <span class="key">L</span> 左層順時針</p>
+        <p><span class="key">U</span> 頂層順時針 <span class="key">D</span> 底層順時針</p>
+        <p><span class="key">F</span> 前層順時針 <span class="key">B</span> 後層順時針</p>
+        <p>按住 <span class="key">Shift</span> + 按鍵 = 逆時針</p>
+    </div>
+
+    <div id="controls">
+        <button onclick="cubeApp.scramble()">🔀 打亂 (Scramble)</button>
+        <button onclick="cubeApp.reset()">🔄 還原 (Reset)</button>
+        <div style="width: 10px;"></div> <!-- Spacer -->
+        <button onclick="cubeApp.rotateLayer('U', -1)">U (上)</button>
+        <button onclick="cubeApp.rotateLayer('D', -1)">D (下)</button>
+        <button onclick="cubeApp.rotateLayer('L', -1)">L (左)</button>
+        <button onclick="cubeApp.rotateLayer('R', -1)">R (右)</button>
+        <button onclick="cubeApp.rotateLayer('F', -1)">F (前)</button>
+        <button onclick="cubeApp.rotateLayer('B', -1)">B (後)</button>
+    </div>
+
+<script>
+/**
+ * Rubik's Cube Logic
+ * * 座標系定義 (Three.js):
+ * x: 右 (+), 左 (-)
+ * y: 上 (+), 下 (-)
+ * z: 前 (+), 後 (-)
+ */
+
+class RubiksCubeApp {
+    constructor() {
+        this.container = document.getElementById('canvas-container');
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+        this.controls = null;
+        this.cubies = []; // 存儲所有 27 個小方塊
+        this.isAnimating = false; // 防止動畫重疊
+        this.pivot = new THREE.Object3D(); // 用於旋轉的軸心物件
+
+        // 魔方參數
+        this.cubeSize = 1;
+        this.spacing = 0.02; // 小方塊之間的間隙
+
+        // 顏色定義 (Hex) - 國際標準配色
+        // Right(x+): Red, Left(x-): Orange
+        // Top(y+): Yellow, Bottom(y-): White
+        // Front(z+): Green, Back(z-): Blue
+        this.colors = {
+            right: 0xB90000,  // Red
+            left: 0xFF5900,   // Orange
+            top: 0xFFD500,    // Yellow
+            bottom: 0xFFFFFF, // White
+            front: 0x009E60,  // Green
+            back: 0x0045AD,   // Blue
+            core: 0x282828    // 內部黑色
+        };
+
+        this.init();
+    }
+
+    init() {
+        // 1. 場景設置
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0x333333);
+
+        // 2. 相機設置
+        this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        this.camera.position.set(5, 5, 7);
+        this.camera.lookAt(0, 0, 0);
+
+        // 3. 渲染器設置
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.container.appendChild(this.renderer.domElement);
+
+        // 4. 燈光 (簡單的環境光 + 方向光以顯示立體感)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        this.scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        this.scene.add(dirLight);
+
+        // 5. 控制器 (OrbitControls)
+        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
+        this.controls.enablePan = false; // 禁止平移，保持魔方在中心
+
+        // 6. 生成魔方
+        this.createCube();
+        this.scene.add(this.pivot); // 加入旋轉軸心到場景
+
+        // 7. 綁定事件
+        window.addEventListener('resize', () => this.onWindowResize(), false);
+        window.addEventListener('keydown', (e) => this.onKeyDown(e), false);
+
+        // 8. 開始渲染循環
+        this.animate();
+    }
+
+    // 創建 3x3x3 魔方
+    createCube() {
+        // 清除舊的 (如果是重置)
+        if (this.cubies.length > 0) {
+            this.cubies.forEach(c => this.scene.remove(c));
+            this.cubies = [];
+        }
+
+        const geometry = new THREE.BoxGeometry(this.cubeSize, this.cubeSize, this.cubeSize);
+        // 為了美觀，稍微圓角化 (這裡用簡單的 box，若要圓角需用 RoundedBoxGeometry，為求 MVP 簡化使用 Box)
+
+        // 建立 3x3x3 網格
+        // 座標範圍從 -1 到 1
+        for (let x = -1; x <= 1; x++) {
+            for (let y = -1; y <= 1; y++) {
+                for (let z = -1; z <= 1; z++) {
+                    const materials = this.getMaterials(x, y, z);
+                    const mesh = new THREE.Mesh(geometry, materials);
+
+                    // 設定位置 (加上間隙)
+                    const offset = this.cubeSize + this.spacing;
+                    mesh.position.set(x * offset, y * offset, z * offset);
+
+                    // 儲存邏輯座標，方便後續查找
+                    mesh.userData = { x: x, y: y, z: z, isCubie: true };
+
+                    // 畫黑邊框讓方塊更明顯
+                    const edges = new THREE.EdgesGeometry(geometry);
+                    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 }));
+                    mesh.add(line);
+
+                    this.scene.add(mesh);
+                    this.cubies.push(mesh);
+                }
+            }
+        }
+    }
+
+    // 根據位置決定材質顏色
+    // Three.js BoxGeometry 材質順序: Right(+x), Left(-x), Top(+y), Bottom(-y), Front(+z), Back(-z)
+    getMaterials(x, y, z) {
+        const mats = [];
+        // +x (Right): Red
+        mats.push(new THREE.MeshStandardMaterial({ color: x === 1 ? this.colors.right : this.colors.core }));
+        // -x (Left): Orange
+        mats.push(new THREE.MeshStandardMaterial({ color: x === -1 ? this.colors.left : this.colors.core }));
+        // +y (Top): Yellow
+        mats.push(new THREE.MeshStandardMaterial({ color: y === 1 ? this.colors.top : this.colors.core }));
+        // -y (Bottom): White
+        mats.push(new THREE.MeshStandardMaterial({ color: y === -1 ? this.colors.bottom : this.colors.core }));
+        // +z (Front): Green
+        mats.push(new THREE.MeshStandardMaterial({ color: z === 1 ? this.colors.front : this.colors.core }));
+        // -z (Back): Blue
+        mats.push(new THREE.MeshStandardMaterial({ color: z === -1 ? this.colors.back : this.colors.core }));
+
+        // 調整材質粗糙度，讓它看起來像塑膠
+        mats.forEach(m => {
+            m.roughness = 0.5;
+            m.metalness = 0.1;
+        });
+
+        return mats;
+    }
+
+    /**
+     * 核心旋轉邏輯
+     * @param {String} axis - 'x', 'y', 'z' 旋轉軸
+     * @param {Number} layer - -1 (左/下/後), 0 (中), 1 (右/上/前)
+     * @param {Number} direction - -1 (順時針, 視覺上), 1 (逆時針) *注意：Three.js 座標系方向可能需調整
+     * * 修正方向定義以符合魔方公式慣例 (看著該面時，順時針為正):
+     * U (Top, y=1): Look down Y axis.
+     * D (Bottom, y=-1): Look up Y axis.
+     * ...
+     */
+    rotateLayer(notation, dirMultiplier = -1) {
+        if (this.isAnimating) return;
+
+        // 解析符號
+        let axis, layer, angle;
+
+        // 根據魔方公式設定
+        // 這裡為了簡化，dirMultiplier -1 代表順時針按鈕，1 代表逆時針 (Shift)
+        // 實際旋轉角度需要根據軸向調整
+        const speed = 500; // 動畫時間 ms
+
+        switch(notation) {
+            case 'R': axis = 'x'; layer = 1; angle = -Math.PI/2 * dirMultiplier; break;
+            case 'L': axis = 'x'; layer = -1; angle = Math.PI/2 * dirMultiplier; break;
+            case 'U': axis = 'y'; layer = 1; angle = -Math.PI/2 * dirMultiplier; break;
+            case 'D': axis = 'y'; layer = -1; angle = Math.PI/2 * dirMultiplier; break;
+            case 'F': axis = 'z'; layer = 1; angle = -Math.PI/2 * dirMultiplier; break;
+            case 'B': axis = 'z'; layer = -1; angle = Math.PI/2 * dirMultiplier; break;
+            default: return;
+        }
+
+        this.isAnimating = true;
+
+        // 1. 找出該層的所有小方塊
+        const activeCubies = this.cubies.filter(c => {
+            // 由於旋轉後座標會有浮點數誤差，需用 epsilon 判斷
+            const pos = c.position[axis];
+            // 判斷是否在該層 (考慮間距縮放，原始邏輯座標是 -1, 0, 1)
+            // 當前位置 / (size+spacing) 大約等於 layer
+            const rawPos = pos / (this.cubeSize + this.spacing);
+            return Math.abs(rawPos - layer) < 0.1;
+        });
+
+        // 2. 將這些方塊 Attach 到 pivot
+        this.pivot.rotation.set(0, 0, 0);
+        this.pivot.position.set(0, 0, 0);
+        this.pivot.updateMatrixWorld();
+
+        activeCubies.forEach(c => {
+            this.pivot.attach(c);
+        });
+
+        // 3. 使用 Tween 執行旋轉動畫
+        const targetRotation = { value: angle };
+        const currentRotation = { value: 0 };
+
+        new TWEEN.Tween(currentRotation)
+            .to(targetRotation, speed)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .onUpdate(() => {
+                this.pivot.rotation[axis] = currentRotation.value;
+            })
+            .onComplete(() => {
+                // 4. 動畫結束，Detach 並更新世界座標
+                this.pivot.updateMatrixWorld(); // 確保 pivot 狀態最新
+                activeCubies.forEach(c => {
+                    this.scene.attach(c); // 移回 scene，會自動保留世界變換
+
+                    // 5. 關鍵：校正座標與旋轉 (SNAP to grid)
+                    // 避免多次旋轉後的浮點數漂移
+                    c.position.x = Math.round(c.position.x / (this.cubeSize + this.spacing)) * (this.cubeSize + this.spacing);
+                    c.position.y = Math.round(c.position.y / (this.cubeSize + this.spacing)) * (this.cubeSize + this.spacing);
+                    c.position.z = Math.round(c.position.z / (this.cubeSize + this.spacing)) * (this.cubeSize + this.spacing);
+
+                    c.rotation.x = Math.round(c.rotation.x / (Math.PI/2)) * (Math.PI/2);
+                    c.rotation.y = Math.round(c.rotation.y / (Math.PI/2)) * (Math.PI/2);
+                    c.rotation.z = Math.round(c.rotation.z / (Math.PI/2)) * (Math.PI/2);
+
+                    c.updateMatrix();
+                });
+
+                this.pivot.rotation.set(0,0,0);
+                this.isAnimating = false;
+            })
+            .start();
+    }
+
+    // 打亂功能
+    scramble() {
+        if (this.isAnimating) return;
+
+        const moves = ['R', 'L', 'U', 'D', 'F', 'B'];
+        const count = 20; // 打亂步數
+        let sequence = [];
+
+        for(let i=0; i<count; i++) {
+            const move = moves[Math.floor(Math.random() * moves.length)];
+            const dir = Math.random() > 0.5 ? 1 : -1;
+            sequence.push({ move, dir });
+        }
+
+        // 快速執行序列
+        // 為了簡化，這裡我們使用遞迴延遲執行，讓使用者看得到打亂過程
+        let idx = 0;
+        const nextMove = () => {
+            if (idx >= sequence.length) return;
+            const action = sequence[idx];
+
+            // 強制執行一個快速動畫
+            this.rotateLayer(action.move, action.dir);
+
+            // 監聽動畫結束標記有點麻煩，這裡簡單用 timeout (需配合 rotateLayer 的 speed)
+            // 為了打亂快一點，我們可以暫時修改 TWEEN 的速度，或直接設置
+            idx++;
+            setTimeout(nextMove, 600); // 比動畫稍慢一點確保安全
+        };
+        nextMove();
+    }
+
+    reset() {
+        if (this.isAnimating) return;
+        this.createCube();
+    }
+
+    onWindowResize() {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    onKeyDown(event) {
+        if (this.isAnimating) return;
+
+        const key = event.key.toUpperCase();
+        const isShift = event.shiftKey;
+        const dir = isShift ? 1 : -1; // Shift 為逆時針
+
+        if (['R', 'L', 'U', 'D', 'F', 'B'].includes(key)) {
+            this.rotateLayer(key, dir);
+        }
+    }
+
+    animate() {
+        requestAnimationFrame(() => this.animate());
+        TWEEN.update();
+        this.controls.update();
+        this.renderer.render(this.scene, this.camera);
+    }
+}
+
+// 初始化應用
+window.onload = () => {
+    window.cubeApp = new RubiksCubeApp();
+};
+
+</script>
+</body>
+</html>

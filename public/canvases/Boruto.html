@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>漩渦慕留人 (Boruto Uzumaki) SVG</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: "Noto Sans TC", sans-serif;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+        }
+        svg {
+            max-height: 80vh;
+            max-width: 100%;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.2));
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>漩渦慕留人 (Boruto)</h1>
+    <!-- Start of SVG -->
+    <svg width="400" height="700" viewBox="0 0 400 700" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="hairGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:#fff176;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#fdd835;stop-opacity:1" />
+            </linearGradient>
+            <linearGradient id="jacketGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#2c2c2c;stop-opacity:1" />
+                <stop offset="50%" style="stop-color:#1a1a1a;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#2c2c2c;stop-opacity:1" />
+            </linearGradient>
+            <linearGradient id="skinGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#ffe0b2;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#ffcc80;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+
+        <!-- Shadows -->
+        <ellipse cx="200" cy="680" rx="80" ry="15" fill="rgba(0,0,0,0.2)" />
+
+        <!-- Back Hair (Bottom part) -->
+        <path d="M150,150 Q130,180 140,210 L260,210 Q270,180 250,150" fill="url(#hairGrad)" stroke="#e6b000" stroke-width="2"/>
+
+        <!-- Legs/Pants -->
+        <path d="M160,450 L160,600 L195,600 L195,480 L205,480 L205,600 L240,600 L240,450 Z" fill="#1a1a1a" stroke="#000" stroke-width="2"/>
+        
+        <!-- Shoes -->
+        <g transform="translate(0, 600)">
+            <!-- Left Shoe -->
+            <path d="M160,0 L195,0 L195,15 L200,25 L160,25 Z" fill="#111" />
+            <path d="M160,10 L195,10" stroke="#333" stroke-width="2"/>
+            <rect x="165" y="-10" width="25" height="10" fill="#ffe0b2"/> <!-- Skin visible -->
+            <!-- Right Shoe -->
+            <path d="M205,0 L240,0 L240,25 L200,25 L205,15 Z" fill="#111" />
+            <path d="M205,10 L240,10" stroke="#333" stroke-width="2"/>
+            <rect x="210" y="-10" width="25" height="10" fill="#ffe0b2"/> <!-- Skin visible -->
+        </g>
+
+        <!-- Torso / Jacket -->
+        <g>
+            <!-- Main Jacket Body -->
+            <path d="M140,220 L130,460 L270,460 L260,220 L200,210 Z" fill="url(#jacketGrad)" stroke="#000" stroke-width="2"/>
+            
+            <!-- Inner White Shirt -->
+            <path d="M185,220 L200,260 L215,220" fill="#fff" stroke="#ddd" stroke-width="1"/>
+            
+            <!-- Jacket Pink Stripes (Inner Lining) -->
+            <path d="M185,220 L185,460 M215,220 L215,460" stroke="#ff4081" stroke-width="4" stroke-linecap="round"/>
+            
+            <!-- Zipper -->
+            <line x1="200" y1="260" x2="200" y2="460" stroke="#333" stroke-width="2" stroke-dasharray="5,2"/>
+            
+            <!-- Collar -->
+            <path d="M160,220 L185,250 L215,250 L240,220" fill="none" stroke="#ff4081" stroke-width="3"/>
+        </g>
+
+        <!-- Arms -->
+        <g>
+            <!-- Left Arm -->
+            <path d="M140,230 L110,350 L130,360 L160,250" fill="#1a1a1a" stroke="#000"/>
+            <rect x="110" y="300" width="35" height="10" fill="#ff4081" transform="rotate(15 127 305)"/> <!-- Stripe -->
+            <circle cx="120" cy="365" r="12" fill="#ffe0b2"/> <!-- Hand -->
+
+            <!-- Right Arm -->
+            <path d="M260,230 L290,350 L270,360 L240,250" fill="#1a1a1a" stroke="#000"/>
+            <rect x="255" y="300" width="35" height="10" fill="#ff4081" transform="rotate(-15 273 305)"/> <!-- Stripe -->
+            <circle cx="280" cy="365" r="12" fill="#ffe0b2"/> <!-- Hand -->
+        </g>
+        
+        <!-- Belt Area -->
+        <rect x="155" y="450" width="90" height="15" fill="#333" stroke="#000"/>
+        <circle cx="220" cy="457" r="3" fill="#999"/> <!-- Buckle/Accessory -->
+
+        <!-- Neck -->
+        <rect x="185" y="200" width="30" height="25" fill="url(#skinGrad)"/>
+
+        <!-- Head -->
+        <g transform="translate(0, 0)">
+            <!-- Face Shape -->
+            <path d="M160,140 C160,140 160,190 170,210 C180,230 200,235 220,230 C230,210 240,190 240,140 Z" fill="url(#skinGrad)" stroke="#e0a060" stroke-width="1"/>
+            
+            <!-- Ears -->
+            <path d="M155,160 C150,160 150,180 160,185" fill="url(#skinGrad)" stroke="#e0a060"/>
+            <path d="M245,160 C250,160 250,180 240,185" fill="url(#skinGrad)" stroke="#e0a060"/>
+
+            <!-- Mouth -->
+            <path d="M190,205 Q200,210 210,205" fill="none" stroke="#bd7e58" stroke-width="1.5" stroke-linecap="round"/>
+
+            <!-- Nose -->
+            <path d="M200,185 L198,190 L202,190" fill="none" stroke="#c78a66" stroke-width="1"/>
+
+            <!-- Whiskers (2 on each side) -->
+            <g stroke="#bd7e58" stroke-width="1.5" stroke-linecap="round">
+                <line x1="165" y1="185" x2="180" y2="188"/>
+                <line x1="168" y1="192" x2="182" y2="194"/>
+                
+                <line x1="235" y1="185" x2="220" y2="188"/>
+                <line x1="232" y1="192" x2="218" y2="194"/>
+            </g>
+
+            <!-- Eyes -->
+            <g>
+                <!-- Left Eye -->
+                <path d="M170,165 Q180,158 190,165" fill="none" stroke="#333" stroke-width="2"/>
+                <circle cx="180" cy="168" r="6" fill="#fff"/>
+                <circle cx="180" cy="168" r="3.5" fill="#00b0ff"/> <!-- Blue Eye -->
+                <circle cx="180" cy="168" r="1.5" fill="#000"/>
+                <circle cx="179" cy="166" r="1" fill="#fff" opacity="0.8"/>
+                
+                <!-- Right Eye -->
+                <path d="M210,165 Q220,158 230,165" fill="none" stroke="#333" stroke-width="2"/>
+                <circle cx="220" cy="168" r="6" fill="#fff"/>
+                <circle cx="220" cy="168" r="3.5" fill="#00b0ff"/> <!-- Blue Eye -->
+                <circle cx="220" cy="168" r="1.5" fill="#000"/>
+                <circle cx="219" cy="166" r="1" fill="#fff" opacity="0.8"/>
+            </g>
+
+            <!-- Eyebrows -->
+            <path d="M170,155 L190,158" stroke="#e6b000" stroke-width="2"/>
+            <path d="M230,155 L210,158" stroke="#e6b000" stroke-width="2"/>
+        </g>
+
+        <!-- Headband -->
+        <g>
+            <!-- Cloth -->
+            <path d="M160,130 L240,130 L242,150 L158,150 Z" fill="#1a237e" stroke="#111"/>
+            <!-- Metal Plate -->
+            <rect x="180" y="132" width="40" height="15" rx="2" fill="#cfd8dc" stroke="#78909c"/>
+            <!-- Konoha Symbol (Simplified) -->
+            <path d="M195,139 C195,139 198,135 202,139 C206,143 198,145 198,139 M192,139 L195,139" fill="none" stroke="#546e7a" stroke-width="1"/>
+            <!-- Bolt Screws -->
+            <circle cx="183" cy="139" r="1" fill="#546e7a"/>
+            <circle cx="217" cy="139" r="1" fill="#546e7a"/>
+        </g>
+
+        <!-- Front Hair (The Banana Ahoge & Bangs) -->
+        <g fill="url(#hairGrad)" stroke="#d4a017" stroke-width="1.5">
+            <!-- Main Ahoge (Stem) -->
+            <path d="M190,130 Q200,80 230,100 Q200,110 210,130" />
+            
+            <!-- Side Bangs -->
+            <path d="M160,135 Q150,160 155,180 L165,150 Z"/>
+            <path d="M240,135 Q250,160 245,180 L235,150 Z"/>
+            
+            <!-- Top Spikes -->
+            <path d="M160,135 L150,110 L170,125 Z"/>
+            <path d="M240,135 L250,110 L230,125 Z"/>
+            <path d="M180,130 L175,100 L190,125 Z"/>
+            <path d="M220,130 L225,100 L210,125 Z"/>
+        </g>
+        
+        <!-- Necklace / Bolt pendant -->
+        <circle cx="200" cy="235" r="3" fill="#silver" stroke="#555" />
+        <path d="M195,220 Q200,235 205,220" fill="none" stroke="#333" stroke-width="1"/>
+
+    </svg>
+    <!-- End of SVG -->
+    
+    <p style="color: #666; font-size: 0.9rem; margin-top: 20px;">
+        Boruto Uzumaki SVG Illustration<br>
+        (Style: Flat Vector / Simplified Anime Style)
+    </p>
+</div>
+
+</body>
+</html>
