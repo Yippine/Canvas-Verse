@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import passport from './lib/passport.js';
 import authRouter from './routes/auth.js';
 import canvasesRouter from './routes/canvases.js';
+import teamsRouter from './routes/teams.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -37,6 +38,7 @@ app.use(session({
   cookie: {
     secure: NODE_ENV === 'production',
     httpOnly: true,
+    sameSite: 'lax', // Required for OAuth redirects
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
@@ -70,6 +72,9 @@ app.use('/api/auth', authRouter);
 // Canvas routes
 app.use('/api/canvases', canvasesRouter);
 
+// Team routes
+app.use('/api/teams', teamsRouter);
+
 // 404 handler - must be after all other routes
 app.use((req: Request, res: Response) => {
   res.status(404).json({
@@ -90,8 +95,8 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
+// Start server - bind to 0.0.0.0 for WSL2 accessibility from Windows
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ╔════════════════════════════════════════════════════════════════╗
 ║         Canvas-Verse Server Started Successfully              ║

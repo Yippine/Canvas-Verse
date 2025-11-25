@@ -23,8 +23,11 @@ model User {
   updatedAt     DateTime   @updatedAt
 
   // Relations
-  sessions  Session[]
-  canvases  Canvas[]
+  sessions         Session[]
+  canvases         Canvas[]
+  teamMemberships  TeamMember[]
+  ownedTeams       Team[]       @relation("TeamOwner")
+  createdInvites   InviteCode[] @relation("InviteCreator")
 
   @@map("users")
 }
@@ -56,16 +59,85 @@ model Canvas {
   tags        String    // JSON array stored as string, e.g., "[\"react\", \"canvas\"]"
   userId      String
   isPublic    Boolean   @default(false)
+  isExample   Boolean   @default(false) // Phase 4: Mark system example canvases
   views       Int       @default(0)
+  // Phase 6: Sharing feature
+  visibility  String    @default("private") // "private" | "team" | "public"
+  teamId      String?   // Team ID when visibility = "team"
+  shareToken  String?   @unique // Unique token for public sharing
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   // Foreign key relation
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team        Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   // Indexes for query performance
   @@index([userId])
   @@index([createdAt])
   @@index([type])
+  @@index([isExample])
+  @@index([shareToken])
+  @@index([teamId])
   @@map("canvases")
+}
+
+// Team Model - Team organization for collaborative work
+// CFDS: Code (team logic) + Data (team info) + State (membership tracking)
+model Team {
+  id          String       @id @default(cuid())
+  name        String
+  ownerId     String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  owner       User         @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members     TeamMember[]
+  inviteCodes InviteCode[]
+  canvases    Canvas[]     // Phase 6: Team-shared canvases
+
+  @@index([ownerId])
+  @@map("teams")
+}
+
+// TeamMember Model - Team membership with role-based access control
+// CFDS: Code (authorization logic) + Data (membership info) + State (role tracking)
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String
+  userId   String
+  role     String   @default("member") // "owner" | "admin" | "member"
+  joinedAt DateTime @default(now())
+
+  // Relations
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Constraints
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+// InviteCode Model - Team invitation system with expiration and usage limits
+// CFDS: Code (invitation logic) + Data (invite info) + State (usage tracking)
+model InviteCode {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  teamId      String
+  createdById String
+  expiresAt   DateTime
+  usedCount   Int      @default(0)
+  maxUses     Int      @default(10)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  team      Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdBy User @relation("InviteCreator", fields: [createdById], references: [id])
+
+  @@index([code])
+  @@index([teamId])
+  @@map("invite_codes")
 }

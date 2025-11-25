@@ -12,6 +12,9 @@
     "prisma:studio": "prisma studio",
     "prisma:push": "prisma db push"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "dependencies": {
     "@canvas-verse/types": "workspace:*",
     "@canvas-verse/validation": "workspace:*",
