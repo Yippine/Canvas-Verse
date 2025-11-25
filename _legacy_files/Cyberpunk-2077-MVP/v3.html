@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyberpunk 2077 MVP Prototype v2.0</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* --- CSS STYLES (UNCHANGED) --- */
+        :root {
+            --cp-yellow: #FCEE0A;
+            --cp-blue: #00F0FF;
+            --cp-red: #FF003C;
+            --font-main: 'Rajdhani', sans-serif;
+            --font-header: 'Orbitron', sans-serif;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: var(--font-main);
+            user-select: none;
+            color: var(--cp-yellow);
+        }
+
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        .status-bar { width: 300px; }
+        .hp-bar-container {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border: 1px solid var(--cp-red);
+            transform: skewX(-20deg);
+            margin-bottom: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hp-fill {
+            width: 100%;
+            height: 100%;
+            background: var(--cp-red);
+            box-shadow: 0 0 10px var(--cp-red);
+            transition: width 0.2s;
+        }
+        .level-text {
+            font-family: var(--font-header);
+            font-size: 24px;
+            color: var(--cp-blue);
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        .minimap-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        .minimap {
+            width: 150px;
+            height: 150px;
+            border: 2px solid var(--cp-yellow);
+            background: rgba(0, 20, 40, 0.6);
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .minimap-player {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0; height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 12px solid var(--cp-yellow);
+            transform: translate(-50%, -50%);
+        }
+        .game-time {
+            font-family: var(--font-header);
+            color: var(--cp-yellow);
+            font-size: 28px;
+        }
+
+        .quest-log {
+            position: absolute;
+            top: 20%;
+            right: 20px;
+            text-align: right;
+            width: 300px;
+        }
+        .quest-title {
+            font-family: var(--font-header);
+            color: var(--cp-yellow);
+            font-size: 20px;
+            text-transform: uppercase;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 10px;
+            border-right: 4px solid var(--cp-yellow);
+            margin-bottom: 10px;
+        }
+        .quest-obj {
+            font-size: 16px;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+            margin-bottom: 5px;
+        }
+        .quest-obj.warning { color: var(--cp-red); font-weight: bold; }
+
+        .weapon-hud {
+            text-align: right;
+            transform: skewX(-10deg);
+        }
+        .weapon-name {
+            font-size: 24px;
+            color: var(--cp-blue);
+            font-family: var(--font-header);
+        }
+        .ammo-count {
+            font-size: 48px;
+            color: var(--cp-blue);
+            font-weight: 900;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .ch-line { position: absolute; background: var(--cp-blue); opacity: 0.8; }
+        .ch-h { width: 20px; height: 2px; top: 9px; left: -10px; }
+        .ch-v { width: 2px; height: 20px; top: 0; left: 0px; }
+
+        #interact-prompt {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: var(--font-header);
+            color: var(--cp-yellow);
+            font-size: 18px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px 20px;
+            border: 1px solid var(--cp-yellow);
+            display: none;
+        }
+        .key-icon {
+            display: inline-block;
+            border: 1px solid var(--cp-yellow);
+            padding: 2px 6px;
+            margin-right: 5px;
+            font-weight: bold;
+        }
+
+        /* MENU */
+        #menu-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 10, 0.95);
+            z-index: 100;
+            display: none;
+            padding: 50px;
+            box-sizing: border-box;
+            color: var(--cp-yellow);
+        }
+        #menu-overlay.active { display: block; }
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 40px;
+            height: 100%;
+        }
+        .menu-col h2 {
+            font-family: var(--font-header);
+            border-bottom: 2px solid var(--cp-red);
+            padding-bottom: 10px;
+            text-transform: uppercase;
+        }
+        .item-entry {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            margin-bottom: 10px;
+            border-left: 4px solid transparent;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+        }
+        .item-entry:hover {
+            background: rgba(252, 238, 10, 0.1);
+            border-left: 4px solid var(--cp-yellow);
+        }
+        .character-model-placeholder {
+            width: 100%;
+            height: 60%;
+            border: 2px solid var(--cp-red);
+            background: repeating-linear-gradient(45deg, #1a1a1a, #1a1a1a 10px, #222 10px, #222 20px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #555;
+            font-family: var(--font-header);
+        }
+
+        /* START SCREEN */
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .logo-text {
+            font-family: var(--font-header);
+            font-size: 60px;
+            color: var(--cp-yellow);
+            text-shadow: 4px 4px 0px var(--cp-blue);
+            margin-bottom: 20px;
+        }
+        .start-btn {
+            background: var(--cp-yellow);
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-family: var(--font-header);
+            font-size: 24px;
+            cursor: pointer;
+            clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+        }
+        .start-btn:hover {
+            background: var(--cp-blue);
+            color: white;
+        }
+
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container"></div>
+    <div class="scanlines"></div>
+
+    <!-- HUD -->
+    <div id="hud">
+        <div class="status-bar">
+            <div class="level-text">LVL 50 SC 50</div>
+            <div class="hp-bar-container">
+                <div class="hp-fill" id="hp-fill"></div>
+            </div>
+            <div style="color: var(--cp-red); font-size: 14px;">TRAUMA TEAM: ACTIVE</div>
+        </div>
+
+        <div class="minimap-container">
+            <div class="minimap"><div class="minimap-player"></div></div>
+            <div class="game-time" id="game-time">21:00</div>
+        </div>
+
+        <div class="quest-log">
+            <div class="quest-title">Current Job</div>
+            <div class="quest-obj warning">前往 'Afterlife' 酒吧</div>
+            <div class="quest-obj">選購新的 Cyberware</div>
+            <div class="quest-obj" style="opacity: 0.5;">(可選) 探索 Night City</div>
+        </div>
+
+        <div class="weapon-hud">
+            <div class="weapon-name">DYING NIGHT</div>
+            <div class="ammo-count" id="ammo-display">21 / 120</div>
+        </div>
+
+        <div id="crosshair">
+            <div class="ch-line ch-h"></div>
+            <div class="ch-line ch-v"></div>
+        </div>
+
+        <div id="interact-prompt">
+            <span class="key-icon">F</span> <span id="interact-text">進入商店</span>
+        </div>
+    </div>
+
+    <!-- MENU -->
+    <div id="menu-overlay">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 20px;">
+            <h1 style="margin:0; font-family:var(--font-header); font-size:40px;">INVENTORY</h1>
+            <button onclick="toggleMenu()" style="background:none; border:1px solid var(--cp-red); color:var(--cp-red); padding:10px 20px; cursor:pointer; font-family:var(--font-header);">CLOSE [TAB]</button>
+        </div>
+        <div class="menu-grid">
+            <div class="menu-col">
+                <h2>Backpack</h2>
+                <ul class="item-list">
+                    <li class="item-entry"><div><div class="item-name">MaxDoc Mk.1</div><div class="item-type">Consumable</div></div><div>x5</div></li>
+                    <li class="item-entry"><div><div class="item-name">Unity</div><div class="item-type">Power Pistol</div></div><div style="color:var(--cp-blue)">Tier 2</div></li>
+                    <li class="item-entry"><div><div class="item-name">Syn-Coke</div><div class="item-type">Junk</div></div><div>x2</div></li>
+                    <li class="item-entry"><div><div class="item-name">Cyberdeck Tier 4</div><div class="item-type">Cyberware</div></div><div style="color:gold">Legendary</div></li>
+                </ul>
+            </div>
+            <div class="menu-col">
+                <h2>Stats</h2>
+                <div class="character-model-placeholder">[ NEURAL LINK DISCONNECTED ]</div>
+                <div style="margin-top: 20px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div style="background:#222; padding:10px;">BODY: <span style="color:var(--cp-red)">18</span></div>
+                    <div style="background:#222; padding:10px;">REFLEX: <span style="color:var(--cp-blue)">20</span></div>
+                    <div style="background:#222; padding:10px;">TECH: <span style="color:var(--cp-yellow)">15</span></div>
+                    <div style="background:#222; padding:10px;">COOL: <span style="color:var(--cp-blue)">12</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- START SCREEN -->
+    <div id="start-screen">
+        <div class="logo-text">NIGHT CITY MVP</div>
+        <p style="color: white; margin-bottom: 40px; font-size: 18px;">WASD 移動 | F 互動 | TAB 選單 | 滑鼠攻擊</p>
+        <button class="start-btn" id="start-btn">JACK IN</button>
+    </div>
+
+    <!-- LOGIC -->
+    <script>
+        // --- GAME STATE ---
+        let camera, scene, renderer;
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, isRunning = false;
+        let velocity = new THREE.Vector3();
+        let direction = new THREE.Vector3();
+        let prevTime = performance.now();
+
+        // Interactive Objects & State
+        const interactables = [];
+        const npcs = [];
+        const flyingCars = []; // New
+        let rainSystem; // New
+        let isMenuOpen = false;
+        let isInside = false;
+        let currentInteractable = null; // FIXED: Initialized here
+        let ammo = 21;
+
+        const neonColors = [0xFCEE0A, 0x00F0FF, 0xFF003C, 0x9900FF];
+
+        init();
+        animate();
+
+        function init() {
+            const container = document.getElementById('game-container');
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+            scene.fog = new THREE.FogExp2(0x050a15, 0.02); // Thicker fog
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.y = 1.7;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x222222);
+            scene.add(ambientLight);
+
+            // City Generation
+            generateCity();
+
+            // New Features
+            createRain();
+            createTraffic();
+
+            // Player Weapon (Visual)
+            const weaponGeo = new THREE.BoxGeometry(0.1, 0.1, 0.4);
+            const weaponMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.2 });
+            const weapon = new THREE.Mesh(weaponGeo, weaponMat);
+            weapon.position.set(0.3, -0.3, -0.5);
+            weapon.name = "PlayerWeapon";
+            camera.add(weapon);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            // Events
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('mousedown', onMouseDown);
+
+            document.getElementById('start-btn').addEventListener('click', () => {
+                document.getElementById('start-screen').style.display = 'none';
+                document.body.requestPointerLock();
+            });
+        }
+
+        // --- GENERATION FUNCTIONS ---
+
+        function createRain() {
+            const rainCount = 5000;
+            const rainGeo = new THREE.BufferGeometry();
+            const positions = [];
+
+            for(let i=0; i<rainCount; i++) {
+                positions.push((Math.random() - 0.5) * 200); // x
+                positions.push(Math.random() * 100);         // y
+                positions.push((Math.random() - 0.5) * 200); // z
+            }
+
+            rainGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            const rainMat = new THREE.PointsMaterial({
+                color: 0x8888aa,
+                size: 0.1,
+                transparent: true,
+                opacity: 0.6
+            });
+
+            rainSystem = new THREE.Points(rainGeo, rainMat);
+            scene.add(rainSystem);
+        }
+
+        function createTraffic() {
+            const carGeo = new THREE.BoxGeometry(2, 0.5, 4);
+            for(let i=0; i<10; i++) {
+                const carMat = new THREE.MeshBasicMaterial({ color: neonColors[i % neonColors.length] });
+                const car = new THREE.Mesh(carGeo, carMat);
+
+                // High altitude
+                car.position.set(
+                    (Math.random() - 0.5) * 300,
+                    20 + Math.random() * 40,
+                    (Math.random() - 0.5) * 300
+                );
+
+                // Custom properties for movement
+                car.userData = {
+                    speed: 0.5 + Math.random() * 0.5,
+                    axis: Math.random() > 0.5 ? 'x' : 'z'
+                };
+
+                // Rotate if moving on X axis
+                if(car.userData.axis === 'x') car.rotation.y = Math.PI / 2;
+
+                scene.add(car);
+                flyingCars.push(car);
+            }
+        }
+
+        function generateCity() {
+            // Floor
+            const floorGeo = new THREE.PlaneGeometry(200, 200);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+
+            // Grid
+            const grid = new THREE.GridHelper(200, 200, 0xFF003C, 0x111111);
+            scene.add(grid);
+
+            // Buildings
+            const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+
+            for (let i = 0; i < 150; i++) {
+                const height = Math.random() * 25 + 5;
+                const width = Math.random() * 4 + 2;
+                const depth = Math.random() * 4 + 2;
+
+                const buildingMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2 });
+                const building = new THREE.Mesh(boxGeo, buildingMat);
+                building.position.x = (Math.random() - 0.5) * 150;
+                building.position.z = (Math.random() - 0.5) * 150;
+
+                // Clear center
+                if (Math.abs(building.position.x) < 10 && Math.abs(building.position.z) < 10) continue;
+
+                building.position.y = height / 2;
+                building.scale.set(width, height, depth);
+                scene.add(building);
+
+                // Neon Signs
+                if (Math.random() > 0.7) {
+                    const color = neonColors[Math.floor(Math.random() * neonColors.length)];
+                    const signGeo = new THREE.PlaneGeometry(2, 0.5);
+                    const signMat = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide });
+                    const sign = new THREE.Mesh(signGeo, signMat);
+                    sign.position.copy(building.position);
+                    sign.position.y = Math.random() * height * 0.8 + 2;
+                    sign.position.z += (depth / 2) + 0.1;
+                    scene.add(sign);
+
+                    const light = new THREE.PointLight(color, 1, 15);
+                    light.position.copy(sign.position);
+                    scene.add(light);
+                }
+            }
+
+            createShop(20, 0, "WEAPON SHOP", 0xFF003C);
+            createShop(-20, 30, "BAR", 0xFCEE0A);
+
+            for(let i=0; i<20; i++) createNPC();
+        }
+
+        function createShop(x, z, label, color) {
+            const shopGeo = new THREE.BoxGeometry(6, 4, 6);
+            const shopMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const shop = new THREE.Mesh(shopGeo, shopMat);
+            shop.position.set(x, 2, z);
+            scene.add(shop);
+
+            const triggerGeo = new THREE.BoxGeometry(2, 2, 2);
+            const triggerMat = new THREE.MeshBasicMaterial({ visible: false });
+
+            // Entrance Trigger
+            const trigger = new THREE.Mesh(triggerGeo, triggerMat);
+            trigger.position.set(x, 1, z + 4);
+            trigger.userData = { type: 'door', label: `ENTER ${label}`, target: {x: x, y:100, z:z} };
+            scene.add(trigger);
+            interactables.push(trigger);
+
+            // Exit Trigger (Interior)
+            const exitTrigger = new THREE.Mesh(triggerGeo, triggerMat);
+            exitTrigger.position.set(x, 101, z + 5);
+            exitTrigger.userData = { type: 'door', label: `LEAVE ${label}`, target: {x: x, y:1.7, z:z+6} };
+            scene.add(exitTrigger);
+            interactables.push(exitTrigger);
+
+            // Sign
+            const sign = new THREE.Mesh(new THREE.PlaneGeometry(4, 1), new THREE.MeshBasicMaterial({ color: color }));
+            sign.position.set(x, 4.5, z + 3.1);
+            scene.add(sign);
+
+            // Interior Floor
+            const intFloor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+            intFloor.rotation.x = -Math.PI / 2;
+            intFloor.position.set(x, 99.9, z);
+            scene.add(intFloor);
+
+            // Interior Light
+            const intLight = new THREE.PointLight(color, 1, 15);
+            intLight.position.set(x, 105, z);
+            scene.add(intLight);
+        }
+
+        function createNPC() {
+            // Use Cylinder for compatibility
+            const geo = new THREE.CylinderGeometry(0.3, 0.3, 1.7, 8);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x555555 });
+            const npc = new THREE.Mesh(geo, mat);
+
+            npc.position.set((Math.random() - 0.5) * 100, 0.85, (Math.random() - 0.5) * 100);
+
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.25,0.25,0.25), new THREE.MeshBasicMaterial({color: 0x00F0FF}));
+            head.position.y = 0.8;
+            npc.add(head);
+
+            npc.userData = {
+                speed: 0.03 + Math.random() * 0.03,
+                direction: new THREE.Vector3(Math.random()-0.5, 0, Math.random()-0.5).normalize(),
+                changeTime: 0
+            };
+
+            scene.add(npc);
+            npcs.push(npc);
+        }
+
+        // --- INPUT & CONTROLS ---
+
+        function onKeyDown(event) {
+            switch (event.code) {
+                case 'KeyW': moveForward = true; break;
+                case 'KeyA': moveLeft = true; break;
+                case 'KeyS': moveBackward = true; break;
+                case 'KeyD': moveRight = true; break;
+                case 'ShiftLeft': isRunning = true; break;
+                case 'Tab':
+                case 'KeyI':
+                    event.preventDefault();
+                    toggleMenu();
+                    break;
+                case 'KeyF':
+                    checkInteraction();
+                    break;
+            }
+        }
+
+        function onKeyUp(event) {
+            switch (event.code) {
+                case 'KeyW': moveForward = false; break;
+                case 'KeyA': moveLeft = false; break;
+                case 'KeyS': moveBackward = false; break;
+                case 'KeyD': moveRight = false; break;
+                case 'ShiftLeft': isRunning = false; break;
+            }
+        }
+
+        function onMouseDown() {
+            if (!isMenuOpen && document.pointerLockElement) {
+                fireWeapon();
+            } else if (!isMenuOpen) {
+                document.body.requestPointerLock();
+            }
+        }
+
+        document.addEventListener('mousemove', (event) => {
+            if (document.pointerLockElement === document.body && !isMenuOpen) {
+                camera.rotation.y -= event.movementX * 0.002;
+                camera.rotation.x -= event.movementY * 0.002;
+                camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+            }
+        });
+
+        function fireWeapon() {
+            if(ammo <= 0) return;
+            ammo--;
+            document.getElementById('ammo-display').innerText = `${ammo} / 120`;
+
+            const weapon = camera.children.find(c => c.name === 'PlayerWeapon');
+
+            // 1. Visual Recoil
+            if (weapon) {
+                new TWEEN.Tween(weapon.position).to({ z: -0.2, y: -0.25 }, 50).yoyo(true).repeat(1).start();
+                new TWEEN.Tween(weapon.rotation).to({ x: 0.2 }, 50).yoyo(true).repeat(1).start();
+            }
+
+            // 2. Laser Beam
+            const start = new THREE.Vector3(0.2, -0.2, -0.5); // Relative to camera
+            start.applyMatrix4(camera.matrixWorld);
+
+            const end = new THREE.Vector3(0, 0, -100); // Far ahead
+            end.applyMatrix4(camera.matrixWorld);
+
+            const lineGeo = new THREE.BufferGeometry().setFromPoints([start, end]);
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x00F0FF });
+            const line = new THREE.Line(lineGeo, lineMat);
+            scene.add(line);
+
+            // Remove laser after 50ms
+            setTimeout(() => scene.remove(line), 50);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function toggleMenu() {
+            isMenuOpen = !isMenuOpen;
+            const menu = document.getElementById('menu-overlay');
+            if (isMenuOpen) {
+                document.exitPointerLock();
+                menu.classList.add('active');
+            } else {
+                document.body.requestPointerLock();
+                menu.classList.remove('active');
+            }
+        }
+
+        function checkInteraction() {
+            if (currentInteractable) {
+                const target = currentInteractable.userData.target;
+
+                // Transition Effect
+                const overlay = document.createElement('div');
+                Object.assign(overlay.style, {
+                    position: 'absolute', width: '100%', height: '100%',
+                    background: 'black', zIndex: '999', transition: 'opacity 0.3s', opacity: '0'
+                });
+                document.body.appendChild(overlay);
+
+                void overlay.offsetWidth;
+                overlay.style.opacity = 1;
+
+                setTimeout(() => {
+                    camera.position.set(target.x, target.y, target.z);
+                    isInside = !isInside;
+                    if(!isInside) createRain(); // Re-add rain if outside (simple logic)
+
+                    overlay.style.opacity = 0;
+                    setTimeout(() => overlay.remove(), 300);
+                }, 300);
+            }
+        }
+
+        function updateInteraction() {
+            const playerPos = camera.position;
+            let found = null;
+            for (let obj of interactables) {
+                if (playerPos.distanceTo(obj.position) < 3) {
+                    found = obj; break;
+                }
+            }
+            const prompt = document.getElementById('interact-prompt');
+            if (found) {
+                currentInteractable = found;
+                document.getElementById('interact-text').innerText = found.userData.label;
+                prompt.style.display = 'block';
+            } else {
+                currentInteractable = null;
+                prompt.style.display = 'none';
+            }
+        }
+
+        // --- MAIN LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            if (isMenuOpen) return;
+
+            const time = performance.now();
+            const delta = (time - prevTime) / 1000;
+
+            // 1. Physics
+            velocity.x -= velocity.x * 10.0 * delta;
+            velocity.z -= velocity.z * 10.0 * delta;
+            direction.z = Number(moveForward) - Number(moveBackward);
+            direction.x = Number(moveRight) - Number(moveLeft);
+            direction.normalize();
+
+            const speed = isRunning ? 150.0 : 80.0;
+            if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
+            if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
+
+            if (moveForward || moveBackward || moveLeft || moveRight) {
+                camera.translateX(velocity.x * delta);
+                camera.translateZ(velocity.z * delta);
+                camera.position.y = isInside ? 101.7 : 1.7;
+
+                // Head bob
+                const bobSpeed = isRunning ? 15 : 10;
+                const bobAmount = isRunning ? 0.05 : 0.03;
+                camera.position.y += Math.sin(time * 0.01 * bobSpeed) * bobAmount * 0.1;
+            }
+
+            // 2. Updates
+
+            // NPCs
+            npcs.forEach(npc => {
+                npc.position.add(npc.userData.direction.clone().multiplyScalar(npc.userData.speed));
+                npc.lookAt(npc.position.clone().add(npc.userData.direction));
+                if (Date.now() * 0.001 > npc.userData.changeTime) {
+                    npc.userData.direction.set(Math.random()-0.5, 0, Math.random()-0.5).normalize();
+                    npc.userData.changeTime = Date.now() * 0.001 + Math.random() * 5;
+                }
+                if(Math.abs(npc.position.x) > 75) npc.position.x *= -0.9;
+                if(Math.abs(npc.position.z) > 75) npc.position.z *= -0.9;
+            });
+
+            // Rain
+            if(rainSystem && !isInside) {
+                const positions = rainSystem.geometry.attributes.position.array;
+                for(let i=1; i<positions.length; i+=3) {
+                    positions[i] -= 0.5; // Fall speed
+                    if (positions[i] < 0) positions[i] = 100; // Reset height
+                }
+                rainSystem.geometry.attributes.position.needsUpdate = true;
+            }
+
+            // Traffic
+            flyingCars.forEach(car => {
+                if(car.userData.axis === 'x') {
+                    car.position.x += car.userData.speed;
+                    if(car.position.x > 150) car.position.x = -150;
+                } else {
+                    car.position.z += car.userData.speed;
+                    if(car.position.z > 150) car.position.z = -150;
+                }
+            });
+
+            updateInteraction();
+            TWEEN.update();
+
+            const date = new Date();
+            document.getElementById('game-time').innerText =
+                `${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
+
+            prevTime = time;
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "statusLine": {
+    "type": "command",
+    "command": "bash /mnt/c/Users/user/Documents/Yippine/Program/Canvas-Verse/.claude/statusline-script.sh"
+  },
+  "outputStyle": "formula-auto-supervisor"
+}

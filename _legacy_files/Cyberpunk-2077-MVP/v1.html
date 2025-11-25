@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyberpunk 2077 MVP Prototype</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    <!-- Google Fonts for that Cyberpunk look -->
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* --- CORE VARIABLES & RESET --- */
+        :root {
+            --cp-yellow: #FCEE0A;
+            --cp-blue: #00F0FF;
+            --cp-red: #FF003C;
+            --cp-bg: #0a0a0a;
+            --cp-overlay: rgba(0, 0, 0, 0.85);
+            --font-main: 'Rajdhani', sans-serif;
+            --font-header: 'Orbitron', sans-serif;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: var(--font-main);
+            user-select: none;
+            color: var(--cp-yellow);
+        }
+
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- UI LAYOUT (HUD) --- */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Let clicks pass through to canvas */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        /* Glitch Animation Keyframes */
+        @keyframes glitch-anim {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 2px) }
+            40% { transform: translate(-2px, -2px) }
+            60% { transform: translate(2px, 2px) }
+            80% { transform: translate(2px, -2px) }
+            100% { transform: translate(0) }
+        }
+
+        /* Top Left: Player Status */
+        .status-bar {
+            width: 300px;
+        }
+        .hp-bar-container {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border: 1px solid var(--cp-red);
+            transform: skewX(-20deg);
+            margin-bottom: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hp-fill {
+            width: 100%; /* Dynamic */
+            height: 100%;
+            background: var(--cp-red);
+            box-shadow: 0 0 10px var(--cp-red);
+        }
+        .level-text {
+            font-family: var(--font-header);
+            font-size: 24px;
+            color: var(--cp-blue);
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        /* Top Right: Minimap & Time */
+        .minimap-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        .minimap {
+            width: 150px;
+            height: 150px;
+            border: 2px solid var(--cp-yellow);
+            background: rgba(0, 20, 40, 0.6);
+            border-radius: 50%; /* Circular minimap like 2.0 update */
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .minimap-player {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 12px solid var(--cp-yellow);
+            transform: translate(-50%, -50%);
+        }
+        .game-time {
+            font-family: var(--font-header);
+            color: var(--cp-yellow);
+            font-size: 28px;
+        }
+
+        /* Center Right: Quest Log */
+        .quest-log {
+            position: absolute;
+            top: 20%;
+            right: 20px;
+            text-align: right;
+            width: 300px;
+        }
+        .quest-title {
+            font-family: var(--font-header);
+            color: var(--cp-yellow);
+            font-size: 20px;
+            text-transform: uppercase;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 10px;
+            border-right: 4px solid var(--cp-yellow);
+            margin-bottom: 10px;
+        }
+        .quest-obj {
+            font-size: 16px;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+            margin-bottom: 5px;
+        }
+        .quest-obj.warning {
+            color: var(--cp-red);
+            font-weight: bold;
+        }
+
+        /* Bottom Right: Weapon/Ammo */
+        .weapon-hud {
+            text-align: right;
+            transform: skewX(-10deg);
+        }
+        .weapon-name {
+            font-size: 24px;
+            color: var(--cp-blue);
+            font-family: var(--font-header);
+        }
+        .ammo-count {
+            font-size: 48px;
+            color: var(--cp-blue);
+            font-weight: 900;
+        }
+
+        /* Center: Crosshair */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .ch-line {
+            position: absolute;
+            background: var(--cp-blue);
+            opacity: 0.8;
+        }
+        .ch-h { width: 20px; height: 2px; top: 9px; left: 0; }
+        .ch-v { width: 2px; height: 20px; top: 0; left: 9px; }
+
+        /* Interaction Prompt */
+        #interact-prompt {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: var(--font-header);
+            color: var(--cp-yellow);
+            font-size: 18px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px 20px;
+            border: 1px solid var(--cp-yellow);
+            display: none; /* Hidden by default */
+        }
+        .key-icon {
+            display: inline-block;
+            border: 1px solid var(--cp-yellow);
+            padding: 2px 6px;
+            margin-right: 5px;
+            font-weight: bold;
+        }
+
+        /* --- FULL SCREEN MENU (Inventory/Map) --- */
+        #menu-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 10, 0.95);
+            z-index: 100;
+            display: none;
+            padding: 50px;
+            box-sizing: border-box;
+            color: var(--cp-yellow);
+        }
+        #menu-overlay.active {
+            display: block;
+        }
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 40px;
+            height: 100%;
+        }
+        .menu-col h2 {
+            font-family: var(--font-header);
+            border-bottom: 2px solid var(--cp-red);
+            padding-bottom: 10px;
+            margin-top: 0;
+            text-transform: uppercase;
+        }
+        .item-list {
+            list-style: none;
+            padding: 0;
+        }
+        .item-entry {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            margin-bottom: 10px;
+            border-left: 4px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+        }
+        .item-entry:hover {
+            background: rgba(252, 238, 10, 0.1);
+            border-left: 4px solid var(--cp-yellow);
+        }
+        .item-name { font-weight: bold; font-size: 18px; }
+        .item-type { font-size: 12px; opacity: 0.7; color: var(--cp-blue); }
+
+        .character-model-placeholder {
+            width: 100%;
+            height: 60%;
+            border: 2px solid var(--cp-red);
+            background: repeating-linear-gradient(
+                45deg,
+                #1a1a1a,
+                #1a1a1a 10px,
+                #222 10px,
+                #222 20px
+            );
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #555;
+            font-family: var(--font-header);
+        }
+
+        /* Intro / Start Screen */
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .logo-text {
+            font-family: var(--font-header);
+            font-size: 60px;
+            color: var(--cp-yellow);
+            text-shadow: 4px 4px 0px var(--cp-blue);
+            margin-bottom: 20px;
+        }
+        .start-btn {
+            background: var(--cp-yellow);
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-family: var(--font-header);
+            font-size: 24px;
+            cursor: pointer;
+            clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+        }
+        .start-btn:hover {
+            background: var(--cp-blue);
+            color: white;
+        }
+
+        /* Scanlines */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 3D Canvas -->
+    <div id="game-container"></div>
+
+    <!-- Effects -->
+    <div class="scanlines"></div>
+
+    <!-- HUD -->
+    <div id="hud">
+        <!-- Top Left -->
+        <div class="status-bar">
+            <div class="level-text">LVL 50 SC 50</div>
+            <div class="hp-bar-container">
+                <div class="hp-fill" id="hp-fill"></div>
+            </div>
+            <div style="color: var(--cp-red); font-size: 14px;">TRAUMA TEAM CONNECTION: ACTIVE</div>
+        </div>
+
+        <!-- Top Right -->
+        <div class="minimap-container">
+            <div class="minimap">
+                <div class="minimap-player"></div>
+            </div>
+            <div class="game-time" id="game-time">21:00</div>
+        </div>
+
+        <!-- Center Right (Quests) -->
+        <div class="quest-log">
+            <div class="quest-title">Current Job</div>
+            <div class="quest-obj warning">前往 'Afterlife' 酒吧</div>
+            <div class="quest-obj">選購新的 Cyberware</div>
+            <div class="quest-obj" style="opacity: 0.5;">(可選) 探索 Night City</div>
+        </div>
+
+        <!-- Bottom Right -->
+        <div class="weapon-hud">
+            <div class="weapon-name">DYING NIGHT</div>
+            <div class="ammo-count">21 / 120</div>
+        </div>
+
+        <!-- Center -->
+        <div id="crosshair">
+            <div class="ch-line ch-h"></div>
+            <div class="ch-line ch-v"></div>
+        </div>
+
+        <!-- Interaction -->
+        <div id="interact-prompt">
+            <span class="key-icon">F</span> <span id="interact-text">進入商店</span>
+        </div>
+    </div>
+
+    <!-- Inventory / Menu -->
+    <div id="menu-overlay">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 20px;">
+            <h1 style="margin:0; font-family:var(--font-header); font-size:40px;">INVENTORY</h1>
+            <button onclick="toggleMenu()" style="background:none; border:1px solid var(--cp-red); color:var(--cp-red); padding:10px 20px; cursor:pointer; font-family:var(--font-header);">CLOSE [TAB]</button>
+        </div>
+        <div class="menu-grid">
+            <!-- Left Col: Items -->
+            <div class="menu-col">
+                <h2>Backpack</h2>
+                <ul class="item-list">
+                    <li class="item-entry">
+                        <div>
+                            <div class="item-name">MaxDoc Mk.1</div>
+                            <div class="item-type">Consumable</div>
+                        </div>
+                        <div>x5</div>
+                    </li>
+                    <li class="item-entry">
+                        <div>
+                            <div class="item-name">Unity</div>
+                            <div class="item-type">Power Pistol</div>
+                        </div>
+                        <div style="color:var(--cp-blue)">Tier 2</div>
+                    </li>
+                    <li class="item-entry">
+                        <div>
+                            <div class="item-name">Syn-Coke</div>
+                            <div class="item-type">Junk</div>
+                        </div>
+                        <div>x2</div>
+                    </li>
+                    <li class="item-entry">
+                        <div>
+                            <div class="item-name">Cyberdeck Tier 4</div>
+                            <div class="item-type">Cyberware</div>
+                        </div>
+                        <div style="color:gold">Legendary</div>
+                    </li>
+                </ul>
+            </div>
+            <!-- Right Col: Character Paper Doll -->
+            <div class="menu-col">
+                <h2>Character Stats</h2>
+                <div class="character-model-placeholder">
+                    [ 3D Character Preview Placeholder ]
+                </div>
+                <div style="margin-top: 20px; display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div style="background:#222; padding:10px;">BODY: <span style="color:var(--cp-red)">18</span></div>
+                    <div style="background:#222; padding:10px;">REFLEX: <span style="color:var(--cp-blue)">20</span></div>
+                    <div style="background:#222; padding:10px;">TECH: <span style="color:var(--cp-yellow)">15</span></div>
+                    <div style="background:#222; padding:10px;">COOL: <span style="color:var(--cp-blue)">12</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <div class="logo-text">NIGHT CITY MVP</div>
+        <p style="color: white; margin-bottom: 40px; font-size: 18px;">WASD 移動 | F 互動 | TAB 選單 | 滑鼠攻擊</p>
+        <button class="start-btn" id="start-btn">JACK IN</button>
+    </div>
+
+    <!-- LOGIC -->
+    <script>
+        // --- GAME STATE ---
+        let camera, scene, renderer;
+        let controls; // We will build a custom PointerLock control logic
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, canJump = false, isRunning = false;
+        let velocity = new THREE.Vector3();
+        let direction = new THREE.Vector3();
+        let prevTime = performance.now();
+
+        // Interactive Objects
+        const interactables = [];
+        const npcs = [];
+        let isMenuOpen = false;
+        let raycaster;
+        let isInside = false; // Are we inside a building?
+
+        // Colors
+        const neonColors = [0xFCEE0A, 0x00F0FF, 0xFF003C, 0x9900FF];
+
+        init();
+        animate();
+
+        function init() {
+            const container = document.getElementById('game-container');
+
+            // 1. Scene Setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+            // Cyberpunk Fog (dense, dark blue-ish)
+            scene.fog = new THREE.FogExp2(0x050a15, 0.025);
+
+            // 2. Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.y = 1.7; // Eye height
+
+            // 3. Audio Listener (Placeholder for structure)
+            const listener = new THREE.AudioListener();
+            camera.add(listener);
+
+            // 4. Lights
+            // Ambient
+            const ambientLight = new THREE.AmbientLight(0x222222);
+            scene.add(ambientLight);
+
+            // 5. City Generation (Procedural Blocks)
+            generateCity();
+
+            // 6. Player Weapon (Visual Only)
+            const weaponGeo = new THREE.BoxGeometry(0.1, 0.1, 0.4);
+            const weaponMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.2 });
+            const weapon = new THREE.Mesh(weaponGeo, weaponMat);
+            weapon.position.set(0.3, -0.3, -0.5);
+            weapon.name = "PlayerWeapon";
+            camera.add(weapon);
+
+            // 7. Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+
+            // 8. Events
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('mousedown', onMouseDown);
+
+            // Start Button
+            document.getElementById('start-btn').addEventListener('click', () => {
+                document.getElementById('start-screen').style.display = 'none';
+                document.body.requestPointerLock();
+            });
+
+            raycaster = new THREE.Raycaster();
+        }
+
+        function generateCity() {
+            // Floor
+            const floorGeo = new THREE.PlaneGeometry(200, 200);
+            const floorMat = new THREE.MeshStandardMaterial({
+                color: 0x050505,
+                roughness: 0.1,
+                metalness: 0.5
+            });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+
+            // Grid Helper (Holographic look)
+            const grid = new THREE.GridHelper(200, 200, 0xFF003C, 0x111111);
+            scene.add(grid);
+
+            // Buildings
+            const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+
+            for (let i = 0; i < 150; i++) {
+                const height = Math.random() * 15 + 5;
+                const width = Math.random() * 4 + 2;
+                const depth = Math.random() * 4 + 2;
+
+                // Material: Dark building with emissive windows
+                const buildingMat = new THREE.MeshStandardMaterial({
+                    color: 0x111111,
+                    roughness: 0.2,
+                    metalness: 0.8
+                });
+
+                const building = new THREE.Mesh(boxGeo, buildingMat);
+                building.position.x = (Math.random() - 0.5) * 150;
+                building.position.z = (Math.random() - 0.5) * 150;
+
+                // Keep center clear for walking
+                if (Math.abs(building.position.x) < 10 && Math.abs(building.position.z) < 10) continue;
+
+                building.position.y = height / 2;
+                building.scale.set(width, height, depth);
+                scene.add(building);
+
+                // Add Neon Signs (Randomly)
+                if (Math.random() > 0.7) {
+                    const color = neonColors[Math.floor(Math.random() * neonColors.length)];
+                    const signGeo = new THREE.PlaneGeometry(2, 0.5);
+                    const signMat = new THREE.MeshBasicMaterial({
+                        color: color,
+                        side: THREE.DoubleSide
+                    });
+                    const sign = new THREE.Mesh(signGeo, signMat);
+
+                    // Position on wall
+                    sign.position.copy(building.position);
+                    sign.position.y = Math.random() * 5 + 2;
+                    sign.position.z += (depth / 2) + 0.1; // Slightly protruding
+                    scene.add(sign);
+
+                    // Add point light for glow
+                    const light = new THREE.PointLight(color, 1, 15);
+                    light.position.copy(sign.position);
+                    scene.add(light);
+                }
+            }
+
+            // Special Interactive Buildings (Shops)
+            createShop(20, 0, "WEAPON SHOP", 0xFF003C);
+            createShop(-20, 30, "BAR", 0xFCEE0A);
+
+            // Add simple NPCs
+            for(let i=0; i<20; i++) {
+                createNPC();
+            }
+        }
+
+        function createShop(x, z, label, color) {
+            const shopGeo = new THREE.BoxGeometry(6, 4, 6);
+            const shopMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const shop = new THREE.Mesh(shopGeo, shopMat);
+            shop.position.set(x, 2, z);
+            scene.add(shop);
+
+            // Door Trigger Zone (Invisible)
+            const triggerGeo = new THREE.BoxGeometry(2, 2, 2);
+            const triggerMat = new THREE.MeshBasicMaterial({ visible: false, wireframe: true, color: 0x00ff00 });
+            const trigger = new THREE.Mesh(triggerGeo, triggerMat);
+            trigger.position.set(x, 1, z + 4); // In front of building
+            trigger.userData = { type: 'door', label: `ENTER ${label}`, target: {x: x, y:100, z:z} }; // Teleport target y=100 is "interior"
+            scene.add(trigger);
+            interactables.push(trigger);
+
+            // Neon Sign
+            const signGeo = new THREE.PlaneGeometry(4, 1);
+            const signMat = new THREE.MeshBasicMaterial({ color: color });
+            const sign = new THREE.Mesh(signGeo, signMat);
+            sign.position.set(x, 4.5, z + 3.1);
+            scene.add(sign);
+
+            // Light
+            const light = new THREE.PointLight(color, 2, 20);
+            light.position.set(x, 4, z+5);
+            scene.add(light);
+
+            // Interior Room (Skybox or separate platform high up)
+            const interiorFloor = new THREE.Mesh(
+                new THREE.PlaneGeometry(20, 20),
+                new THREE.MeshStandardMaterial({ color: 0x333333, side: THREE.DoubleSide })
+            );
+            interiorFloor.rotation.x = -Math.PI / 2;
+            interiorFloor.position.set(x, 99.9, z);
+            scene.add(interiorFloor);
+
+            const exitTrigger = new THREE.Mesh(triggerGeo, triggerMat);
+            exitTrigger.position.set(x, 101, z + 5);
+            exitTrigger.userData = { type: 'door', label: `LEAVE ${label}`, target: {x: x, y:1.7, z:z+6} };
+            scene.add(exitTrigger);
+            interactables.push(exitTrigger);
+
+            // Interior decorations
+            const intLight = new THREE.PointLight(color, 1, 15);
+            intLight.position.set(x, 105, z);
+            scene.add(intLight);
+        }
+
+        function createNPC() {
+            const geo = new THREE.CapsuleGeometry(0.4, 1, 4, 8);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x555555 });
+            const npc = new THREE.Mesh(geo, mat);
+
+            // Random start
+            npc.position.set(
+                (Math.random() - 0.5) * 100,
+                1.5,
+                (Math.random() - 0.5) * 100
+            );
+
+            // Add a "head" or glow
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3,0.3), new THREE.MeshBasicMaterial({color: 0x00F0FF}));
+            head.position.y = 0.8;
+            npc.add(head);
+
+            npc.userData = {
+                speed: 0.03 + Math.random() * 0.03,
+                direction: new THREE.Vector3(Math.random()-0.5, 0, Math.random()-0.5).normalize(),
+                changeTime: 0
+            };
+
+            scene.add(npc);
+            npcs.push(npc);
+        }
+
+        function updateNPCs() {
+            const time = Date.now() * 0.001;
+            npcs.forEach(npc => {
+                npc.position.add(npc.userData.direction.clone().multiplyScalar(npc.userData.speed));
+                npc.lookAt(npc.position.clone().add(npc.userData.direction));
+
+                // Change direction randomly
+                if (time > npc.userData.changeTime) {
+                    npc.userData.direction.set(Math.random()-0.5, 0, Math.random()-0.5).normalize();
+                    npc.userData.changeTime = time + Math.random() * 5;
+                }
+
+                // Bounds check (simple wrap)
+                if(npc.position.x > 75) npc.position.x = -75;
+                if(npc.position.x < -75) npc.position.x = 75;
+                if(npc.position.z > 75) npc.position.z = -75;
+                if(npc.position.z < -75) npc.position.z = 75;
+            });
+        }
+
+        // --- CONTROLS ---
+
+        function onKeyDown(event) {
+            switch (event.code) {
+                case 'KeyW': moveForward = true; break;
+                case 'KeyA': moveLeft = true; break;
+                case 'KeyS': moveBackward = true; break;
+                case 'KeyD': moveRight = true; break;
+                case 'ShiftLeft': isRunning = true; break;
+                case 'Tab':
+                case 'KeyI':
+                    event.preventDefault();
+                    toggleMenu();
+                    break;
+                case 'KeyF':
+                    checkInteraction();
+                    break;
+            }
+        }
+
+        function onKeyUp(event) {
+            switch (event.code) {
+                case 'KeyW': moveForward = false; break;
+                case 'KeyA': moveLeft = false; break;
+                case 'KeyS': moveBackward = false; break;
+                case 'KeyD': moveRight = false; break;
+                case 'ShiftLeft': isRunning = false; break;
+            }
+        }
+
+        function onMouseDown() {
+            if (!isMenuOpen && document.pointerLockElement) {
+                // Attack Animation
+                const weapon = camera.children.find(c => c.name === 'PlayerWeapon');
+                if (weapon) {
+                    // Simple recoil tween
+                    new TWEEN.Tween(weapon.position)
+                        .to({ z: -0.3, y: -0.25 }, 50)
+                        .yoyo(true)
+                        .repeat(1)
+                        .start();
+
+                    new TWEEN.Tween(weapon.rotation)
+                        .to({ x: 0.5 }, 50)
+                        .yoyo(true)
+                        .repeat(1)
+                        .start();
+                }
+            } else if (!isMenuOpen) {
+                document.body.requestPointerLock();
+            }
+        }
+
+        // Pointer Lock Logic
+        document.addEventListener('mousemove', (event) => {
+            if (document.pointerLockElement === document.body && !isMenuOpen) {
+                camera.rotation.y -= event.movementX * 0.002;
+                camera.rotation.x -= event.movementY * 0.002;
+                // Clamp look up/down
+                camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+            }
+        });
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function toggleMenu() {
+            isMenuOpen = !isMenuOpen;
+            const menu = document.getElementById('menu-overlay');
+            if (isMenuOpen) {
+                document.exitPointerLock();
+                menu.classList.add('active');
+            } else {
+                document.body.requestPointerLock();
+                menu.classList.remove('active');
+            }
+        }
+
+        // --- INTERACTION LOGIC ---
+        let currentInteractable = null;
+
+        function checkInteraction() {
+            if (currentInteractable) {
+                // Execute interaction
+                const target = currentInteractable.userData.target;
+
+                // Fade effect (Simulated)
+                const overlay = document.createElement('div');
+                overlay.style.position = 'absolute';
+                overlay.style.width = '100%';
+                overlay.style.height = '100%';
+                overlay.style.background = 'black';
+                overlay.style.zIndex = 999;
+                overlay.style.transition = 'opacity 0.5s';
+                overlay.style.opacity = 0;
+                document.body.appendChild(overlay);
+
+                // Fade out
+                requestAnimationFrame(() => {
+                    overlay.style.opacity = 1;
+                    setTimeout(() => {
+                        // Teleport
+                        camera.position.set(target.x, target.y, target.z);
+                        isInside = !isInside;
+
+                        // Fade in
+                        overlay.style.opacity = 0;
+                        setTimeout(() => overlay.remove(), 500);
+                    }, 500);
+                });
+            }
+        }
+
+        function updateInteraction() {
+            const playerPos = camera.position;
+            let found = null;
+
+            for (let obj of interactables) {
+                if (playerPos.distanceTo(obj.position) < 3) {
+                    found = obj;
+                    break;
+                }
+            }
+
+            const prompt = document.getElementById('interact-prompt');
+            if (found) {
+                currentInteractable = found;
+                document.getElementById('interact-text').innerText = found.userData.label;
+                prompt.style.display = 'block';
+            } else {
+                currentInteractable = null;
+                prompt.style.display = 'none';
+            }
+        }
+
+        // --- MAIN LOOP ---
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isMenuOpen) return; // Pause logic when menu is open
+
+            const time = performance.now();
+            const delta = (time - prevTime) / 1000;
+
+            // 1. Physics / Movement
+            velocity.x -= velocity.x * 10.0 * delta;
+            velocity.z -= velocity.z * 10.0 * delta;
+
+            direction.z = Number(moveForward) - Number(moveBackward);
+            direction.x = Number(moveRight) - Number(moveLeft);
+            direction.normalize(); // Consistent speed in diagonals
+
+            const speed = isRunning ? 150.0 : 80.0;
+
+            if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
+            if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
+
+            // Apply movement based on camera direction
+            if (moveForward || moveBackward || moveLeft || moveRight) {
+                const moveX = velocity.x * delta;
+                const moveZ = velocity.z * delta;
+
+                camera.translateX(moveX);
+                camera.translateZ(moveZ);
+
+                // Lock Y movement (stay on ground unless we add jump later)
+                if(!isInside) camera.position.y = 1.7;
+                else camera.position.y = 101.7; // Interior height
+            }
+
+            // Head bob
+            if (moveForward || moveBackward || moveLeft || moveRight) {
+                const bobSpeed = isRunning ? 15 : 10;
+                const bobAmount = isRunning ? 0.05 : 0.03;
+                camera.position.y += Math.sin(time * 0.01 * bobSpeed) * bobAmount * 0.1;
+            }
+
+            // 2. NPCs
+            updateNPCs();
+
+            // 3. Interaction Check
+            updateInteraction();
+
+            // 4. TWEEN update
+            TWEEN.update();
+
+            // 5. Update Clock HUD
+            const date = new Date();
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            document.getElementById('game-time').innerText = `${hours}:${minutes}`;
+
+            prevTime = time;
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>

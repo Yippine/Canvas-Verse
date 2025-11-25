@@ -1,33 +1,21 @@
 {
-  "name": "temp_project",
+  "name": "canvas-verse",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "framer-motion": "^12.23.24",
-    "lucide-react": "^0.554.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "dev": "pnpm --parallel --stream -r run dev",
+    "dev:web": "pnpm --filter @canvas-verse/web dev",
+    "dev:server": "pnpm --filter @canvas-verse/server dev",
+    "build": "pnpm -r run build",
+    "build:web": "pnpm --filter @canvas-verse/web build",
+    "build:server": "pnpm --filter @canvas-verse/server build",
+    "lint": "pnpm -r run lint",
+    "test": "pnpm -r run test",
+    "clean": "pnpm -r run clean",
+    "typecheck": "pnpm -r run typecheck"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@tailwindcss/postcss": "^4.1.17",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
-    "autoprefixer": "^10.4.22",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.17",
-    "vite": "^7.2.4"
+    "typescript": "^5.7.3"
   }
 }

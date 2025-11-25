@@ -64,16 +64,16 @@ Desktop.ini
 .tmp
 
 # Claude Code
-.claude/formula/workflow/*.log
-.claude/formula/workflow/*.json
-.claude/formula/archive/
-
-# Optional: Uncomment if you want to ignore all Claude configs
-# .claude/
-
-# Formula-Contract work files
 .claude/
 FORMULA.md
 
-# Reference projects (for development reference only)
-_reference/
+# Reference projects (ignore cloned repos, keep README.md for documentation)
+_reference/*/
+!_reference/README.md
+
+# Legacy files are kept in version control for team reference
+# _legacy_files/ is tracked
+
+# Prisma
+*.db
+*.db-journal

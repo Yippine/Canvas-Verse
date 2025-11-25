@@ -1,0 +1,71 @@
+// Canvas-Verse Prisma Schema - Phase 0.4
+// Database models for Canvas-Verse application
+// Includes User, Session (Lucia Auth), and Canvas models with relationships
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User Model - Core user entity with Google OAuth authentication
+// CFDS: Code (auth integration) + Files (profile) + Data (user info) + State (active sessions)
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  googleId      String?    @unique // Google OAuth ID
+  name          String?
+  avatar        String?    // Profile picture URL from Google
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relations
+  sessions  Session[]
+  canvases  Canvas[]
+
+  @@map("users")
+}
+
+// Session Model - Lucia Auth session management
+// Compatible with @lucia-auth/adapter-prisma
+// CFDS: Code (session validation) + Data (session tokens) + State (expiry tracking)
+model Session {
+  id        String    @id
+  userId    String
+  expiresAt DateTime
+
+  // Foreign key relation
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Indexes for query optimization
+  @@index([userId])
+  @@map("sessions")
+}
+
+// Canvas Model - User-created canvas documents
+// CFDS: Code (canvas logic) + Files (canvas content) + Data (metadata) + State (view tracking)
+model Canvas {
+  id          String    @id @default(cuid())
+  title       String
+  type        String    // canvas, code-snippet, formula, etc.
+  code        String    // Main content/code (SQLite stores as TEXT)
+  description String?
+  tags        String    // JSON array stored as string, e.g., "[\"react\", \"canvas\"]"
+  userId      String
+  isPublic    Boolean   @default(false)
+  views       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Foreign key relation
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Indexes for query performance
+  @@index([userId])
+  @@index([createdAt])
+  @@index([type])
+  @@map("canvases")
+}
